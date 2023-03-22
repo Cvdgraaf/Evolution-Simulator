@@ -1,5 +1,4 @@
 import random
-from random import randint
 
 #The initial settings:
 
@@ -57,17 +56,17 @@ def initialize(fitness, organisms):     #initialization of fitness and organisms
 
 def reproduce(fitness, organisms, org, fitAvg): #reproduce to 1 or 2 offsprings if fitness is above a threshold
     if fitness[org] > 0.3 :      
-        organisms[randint(0, orgNum - 1)] = organisms[org]
+        organisms[random.randint(0, orgNum - 1)] = organisms[org]
         if fitness[org] > 0.5 :      
-            organisms[randint(0, orgNum - 1)] = organisms[org]
+            organisms[random.randint(0, orgNum - 1)] = organisms[org]
             if fitness[org] > 0.75 :      
-                organisms[randint(0, orgNum - 1)] = organisms[org]
+                organisms[random.randint(0, orgNum - 1)] = organisms[org]
                 if fitness[org] > 0.85 :      
-                    organisms[randint(0, orgNum - 1)] = organisms[org]
-                    organisms[randint(0, orgNum - 1)] = organisms[org]
+                    organisms[random.randint(0, orgNum - 1)] = organisms[org]
+                    organisms[random.randint(0, orgNum - 1)] = organisms[org]
                     if fitness[org] > 0.95 :      
-                        organisms[randint(0, orgNum - 1)] = organisms[org]
-                        organisms[randint(0, orgNum - 1)] = organisms[org]
+                        organisms[random.randint(0, orgNum - 1)] = organisms[org]
+                        organisms[random.randint(0, orgNum - 1)] = organisms[org]
 
 def printRes(fitness, organisms, round):
     print("Round: " + str(round) + "\n\n")
