@@ -138,9 +138,25 @@ class Organism:
 	
 	def _computeFitness(self):
 		solvedConstraints = 0
+		cost = 2
 		for clause in self._constraints :
 			solvedConstraints += clause.evaluate(self._genome, self._domains)
-		return solvedConstraints + self._fitOffset         #fitness >= fitOffset (generally 1)
+		if self._genome[0] == 0:			
+			return solvedConstraints + self._fitOffset   #fitness >= fitOffset (generally 1)
+		else:
+			fittest = solvedConstraints + self._fitOffset
+			for i in range(1, len(self._genome) - 1):
+				to_consider = self._genome
+				to_consider[i] = 1 - self._genome[i]
+				consideredConstraints = 0
+				for clause in self._constraints :
+					consideredConstraints += clause.evaluate(to_consider, self._domains)
+				new_fitness = consideredConstraints + self._fitOffset - cost
+				if fittest < new_fitness:
+					fittest = new_fitness
+			return fittest
+
+		    
 	
 	def mutate(self):                        #triggers a mutation cycle where each gene can change with probability prob
 		if self._mutType == 0:
