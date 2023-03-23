@@ -136,11 +136,12 @@ class Organism:
 		self._prob = prob
 		self._mutType = mutType
 	
+	### COSTLY LEARNING HERE ###
 	def _computeFitness(self):
 		solvedConstraints = 0
-		cost = 2
+		cost = 10
 		for clause in self._constraints :
-			solvedConstraints += clause.evaluate(self._genome, self._domains)
+			solvedConstraints += clause.evaluate(self._genome[1:len(self._genome)], self._domains)
 		if self._genome[0] == 0:			
 			return solvedConstraints + self._fitOffset   #fitness >= fitOffset (generally 1)
 		else:
@@ -150,7 +151,7 @@ class Organism:
 				to_consider[i] = 1 - self._genome[i]
 				consideredConstraints = 0
 				for clause in self._constraints :
-					consideredConstraints += clause.evaluate(to_consider, self._domains)
+					consideredConstraints += clause.evaluate(to_consider[1:len(self._genome)], self._domains)
 				new_fitness = consideredConstraints + self._fitOffset - cost
 				if fittest < new_fitness:
 					fittest = new_fitness
