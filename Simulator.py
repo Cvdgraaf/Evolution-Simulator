@@ -127,42 +127,52 @@ class ConstraintWCSP(Constraint):					#the general wcsp
 		return self._weight
 	
 class Organism:
-	def __init__(self, genome, constraints, prob, domains, fitOffset, mutType):    
+	def __init__(self, genome, constraints, probLearn, prob, domains, fitOffset, mutType):    
 		self._genome = genome
 		self._domains = domains
 		self._constraints = constraints
 		self._fitOffset = fitOffset
 		self._fitness = self._computeFitness()
+		self._probLearn = probLearn
 		self._prob = prob
 		self._mutType = mutType
 	
 	### COSTLY LEARNING HERE ###
 	def _computeFitness(self):
 		solvedConstraints = 0
-		cost = 10
+		cost = 2
 		for clause in self._constraints :
-			solvedConstraints += clause.evaluate(self._genome[1:len(self._genome)], self._domains)
+			solvedConstraints += clause.evaluate(self._genome, self._domains)
 		if self._genome[0] == 0:			
 			return solvedConstraints + self._fitOffset   #fitness >= fitOffset (generally 1)
 		else:
 			fittest = solvedConstraints + self._fitOffset
 			for i in range(1, len(self._genome) - 1):
-				to_consider = self._genome
+				to_consider = self._genome.copy()
 				to_consider[i] = 1 - self._genome[i]
 				consideredConstraints = 0
 				for clause in self._constraints :
-					consideredConstraints += clause.evaluate(to_consider[1:len(self._genome)], self._domains)
+					consideredConstraints += clause.evaluate(to_consider, self._domains)
 				new_fitness = consideredConstraints + self._fitOffset - cost
 				if fittest < new_fitness:
 					fittest = new_fitness
 			return fittest
+		
+	def learn_mutate(self):
+		doMutation = np.random.binomial(1, self._probLearn, 1)      #decide if we mutate or not
+		if doMutation == 1:
+			domain = self._domains[0]
+			x = 1
+			domLen = len(domain)
+			if domLen > 2:                                      #in this case, we have to decide to which value of the domain we mutate
+				x = np.random.randint(1, domLen)                #sample an offset
+			self._genome[0] = (x + self._genome[0]) % domLen
+		self._fitness = self._computeFitness()
 
-		    
-	
 	def mutate(self):                        #triggers a mutation cycle where each gene can change with probability prob
 		if self._mutType == 0:
 			varNum = len(self._genome)
-			for i in range(0, varNum) :
+			for i in range(1, varNum) :
 				doMutation = np.random.binomial(1, self._prob[i], 1)    #do the mutation with the probability of the respective gene
 				if doMutation == 1:
 					domain = self._domains[i]
@@ -175,7 +185,7 @@ class Organism:
 			doMutation = np.random.binomial(1, self._prob, 1)      #decide if we mutate or not
 			varNum = len(self._genome)
 			if doMutation == 1:                                   #if yes, choose a gene to mutate
-				i = np.random.randint(0, varNum)
+				i = np.random.randint(1, varNum)
 				domain = self._domains[i]
 				x = 1
 				domLen = len(domain)
@@ -189,7 +199,7 @@ class Organism:
 		myFitness = self._fitness               
 		s = int(np.random.poisson(myFitness - 1, 1) + 1)   #draw a sample from Poisson distribution; we ensure that each organism has at least one offspring
 		#s = myFitness
-		dct[label] = Organism(self._genome.copy(), self._constraints, self._prob, self._domains, self._fitOffset, self._mutType)
+		dct[label] = Organism(self._genome.copy(), self._constraints, self._probLearn, self._prob, self._domains, self._fitOffset, self._mutType)
 		return (s, label)       
 	
 	def getFitness(self):
@@ -207,7 +217,7 @@ class Organism:
 			for off in range (1, domLen):
 				newGenome = self._genome.copy()
 				newGenome[i] = (newGenome[i] + off) % domLen
-				res.append(Organism(newGenome, self._constraints, self._prob, self._domains, self._fitOffset, self._mutType))
+				res.append(Organism(newGenome, self._constraints, self._probLearn, self._prob, self._domains, self._fitOffset, self._mutType))
 		return res
 
 
@@ -542,6 +552,53 @@ class LocalStatistics:     #computes local optimality statistics, regarding the 
 	#Show data for a specific round / show data using joyplots (might not be easy to understand)
 	#How to visualize the data for the population: 3D graph / joyplots / show separate distribution for organisms and then for mutants for each organism
 
+class AgentStatistics:     # Contains information about the amount of costly learning agents in the simulation
+	def __init__(self, population, orgNum, maxCLAmount):
+		self._population = population
+		self._costlyLearnerAmountRaw = []
+		self._costlyLearnerAmount = []
+		self._maxCLAmount = maxCLAmount
+		self._orgNum = orgNum
+
+	def updateStats(self):
+		rnd = self._population.getRound()
+		clAmount = self._computeAvgCLAmount()
+		self._costlyLearnerAmountRaw.append(clAmount)
+		self._costlyLearnerAmount.append((rnd, clAmount))
+
+	def plotStats(self):
+		axes = plt.gca()
+		axes.set_ylim([0,1])
+		plt.title("Number of costly learning agents")
+		plt.xlabel("Rounds")
+		plt.ylabel("CL agents")
+		self.plotCLAmount()
+		plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
+		plt.show()
+	
+	def plotCLAmount(self):
+		self._plotStat(self._costlyLearnerAmount, "Average", "blue")
+		
+	def _plotStat(self, statList, des, clr):
+		xs = [x[0] for x in statList]
+		ys = [x[1] for x in statList]
+		plt.plot(xs,ys, label = des, color = clr)
+	
+	def _computeAvgCLAmount(self):
+		x = 0
+		orgs = self._population.getOrganisms()
+		for i in range(0, self._orgNum):
+			x += orgs[i].getGenome()[0]
+		return x / self._orgNum
+	
+	def getCLAmountRaw(self):
+		return self._costlyLearnerAmountRaw
+	
+	def getCLAmount(self):
+		resAmount = []
+		for (rnd, avg) in self._costlyLearnerAmount:
+			resAmount.append(avg)
+		return resAmount
 
 class Statistics:                       #contains all the statistics and methods to update and plot them for a population
 	def __init__(self, population, maxPossibleFitness, orgNum) :
@@ -573,12 +630,12 @@ class Statistics:                       #contains all the statistics and methods
 		plt.xlabel("Rounds")
 		plt.ylabel("Normalized fitness")
 		self.plotAvgFit()
-		self.plotMinFit()
-		self.plotMaxFit()
-		self.plotMin5PerFit()
-		self.plotMax5PerFit()
-		self._fillPlot(self._maxFitList, self._max5PerFitList)  #fill between max and max 5 percent
-		self._fillPlot(self._minFitList, self._min5PerFitList)  #fill between min and min 5 percent
+		# self.plotMinFit()
+		# self.plotMaxFit()
+		# self.plotMin5PerFit()
+		# self.plotMax5PerFit()
+		# self._fillPlot(self._maxFitList, self._max5PerFitList)  #fill between max and max 5 percent
+		# self._fillPlot(self._minFitList, self._min5PerFitList)  #fill between min and min 5 percent
 		plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
 		plt.show()
 		
@@ -683,7 +740,7 @@ class Statistics:                       #contains all the statistics and methods
 
 
 class Population:                        #contains the current population and statistics; is updated on nextGeneration call
-	def __init__(self, orgNum, constraints, prob, initial, domains, fitOffset, mutType, maxGenome):
+	def __init__(self, orgNum, constraints, probLearn, prob, initial, domains, fitOffset, mutType, maxGenome):
 		self._orgNum = orgNum
 		self._constraints = constraints
 		self._organisms = []
@@ -694,12 +751,18 @@ class Population:                        #contains the current population and st
 			self._maxPossibleFitness += x.getWeight()
 
 		self._stats = Statistics(self, self._maxPossibleFitness, self._orgNum)
-		self._localStats = LocalStatistics(self, self._maxPossibleFitness, 3, self._stats, maxGenome)    
+		self._localStats = LocalStatistics(self, self._maxPossibleFitness, 3, self._stats, maxGenome)  
+		self._agentStats = AgentStatistics(self, orgNum, orgNum)  
 
+		actual_genotype = initial[1:len(initial)]
 		for i in range(0, self._orgNum):
-			self._organisms.append(Organism(initial, self._constraints, prob, domains, fitOffset, mutType))
+			if i < self._orgNum/2:
+				self._organisms.append(Organism([0] + actual_genotype, self._constraints, probLearn, prob, domains, fitOffset, mutType))
+			else: 
+				self._organisms.append(Organism([1] + actual_genotype, self._constraints, probLearn, prob, domains, fitOffset, mutType))
 		self._stats.updateStats()
 		self._localStats.updateStats()
+		self._agentStats.updateStats()
 
 	def getOrganisms(self) :
 		return self._organisms.copy()
@@ -712,6 +775,9 @@ class Population:                        #contains the current population and st
 	
 	def getLocalStats(self) :
 		return self._localStats
+	
+	def getAgentStats(self):
+		return self._agentStats
 	
 	def nextGeneration(self):
 		nextGenPool = []
@@ -736,14 +802,17 @@ class Population:                        #contains the current population and st
 			for i in range (0, currNum):
 				org = dct[label]
 				org.mutate()                                     #mutate the offspring
+				org.learn_mutate()
 				self._organisms.append(org)
 		(num, label) = nextGenPool[-1]
 		for i in range (0, totalRemaining):                      #add the remaining ones
 			org = dct[label]
 			org.mutate()									     #mutate them
+			org.learn_mutate()
 			self._organisms.append(org)          
 		self._stats.updateStats()                                #update the stats for the new generation
 		self._localStats.updateStats()
+		self._agentStats.updateStats()
 
 	def computeDistribution(self):
 		distrib = {}
@@ -757,6 +826,7 @@ class Simulator:
 	def __init__(self,
 				probType,		 #the type of the problem solved (sat - 1, binary constraint - 2, general constraint - 3, wcsp definition - 4)
 				initial,         #the initial values given to each variable / initial genome, expressed as a position in the domain
+				learn_probability,
 				probability,     #the probability of a mutation for each gene
 				rounds,          #the number of rounds to be considered
 				orgNum,          #the number of organisms
@@ -777,7 +847,7 @@ class Simulator:
 			for i in range (0, len(initial)):
 				domains.append([0,1])     #for these problems (sat + binary constraint), define a binary domain
 		self._domains = domains
-		self._population = Population(orgNum, constraints, probability, initial, domains, fitOffset, mutType, maxGenome)
+		self._population = Population(orgNum, constraints, learn_probability, probability, initial, domains, fitOffset, mutType, maxGenome)
 	def run(self):
 		for i in range (0, self._rounds):
 			if self._getDistrib:
@@ -788,6 +858,9 @@ class Simulator:
 		
 	def printStatistics(self):
 		self._population.getStats().plotStats()
+
+	def printAgentStatistics(self):
+		self._population.getAgentStats().plotStats()
 		
 	def getExpCoeff(self):
 		return self._population.getLocalStats().getExpCoeff()
