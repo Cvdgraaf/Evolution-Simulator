@@ -127,20 +127,20 @@ class ConstraintWCSP(Constraint):					#the general wcsp
 		return self._weight
 	
 class Organism:
-	def __init__(self, genome, constraints, probLearn, prob, domains, fitOffset, mutType):    
+	def __init__(self, genome, constraints, learnCost, probLearn, prob, domains, fitOffset, mutType):    
 		self._genome = genome
 		self._domains = domains
 		self._constraints = constraints
 		self._fitOffset = fitOffset
-		self._fitness = self._computeFitness()
+		self._learnCost = learnCost
 		self._probLearn = probLearn
 		self._prob = prob
 		self._mutType = mutType
+		self._fitness = self._computeFitness()
 	
 	### COSTLY LEARNING HERE ###
 	def _computeFitness(self):
 		solvedConstraints = 0
-		cost = 2
 		for clause in self._constraints :
 			solvedConstraints += clause.evaluate(self._genome, self._domains)
 		if self._genome[0] == 0:			
@@ -153,7 +153,7 @@ class Organism:
 				consideredConstraints = 0
 				for clause in self._constraints :
 					consideredConstraints += clause.evaluate(to_consider, self._domains)
-				new_fitness = consideredConstraints + self._fitOffset - cost
+				new_fitness = consideredConstraints + self._fitOffset - self._learnCost
 				if fittest < new_fitness:
 					fittest = new_fitness
 			return fittest
@@ -199,7 +199,7 @@ class Organism:
 		myFitness = self._fitness               
 		s = int(np.random.poisson(myFitness - 1, 1) + 1)   #draw a sample from Poisson distribution; we ensure that each organism has at least one offspring
 		#s = myFitness
-		dct[label] = Organism(self._genome.copy(), self._constraints, self._probLearn, self._prob, self._domains, self._fitOffset, self._mutType)
+		dct[label] = Organism(self._genome.copy(), self._constraints, self._learnCost, self._probLearn, self._prob, self._domains, self._fitOffset, self._mutType)
 		return (s, label)       
 	
 	def getFitness(self):
@@ -217,7 +217,7 @@ class Organism:
 			for off in range (1, domLen):
 				newGenome = self._genome.copy()
 				newGenome[i] = (newGenome[i] + off) % domLen
-				res.append(Organism(newGenome, self._constraints, self._probLearn, self._prob, self._domains, self._fitOffset, self._mutType))
+				res.append(Organism(newGenome, self._constraints, self._learnCost, self._probLearn, self._prob, self._domains, self._fitOffset, self._mutType))
 		return res
 
 
@@ -740,7 +740,7 @@ class Statistics:                       #contains all the statistics and methods
 
 
 class Population:                        #contains the current population and statistics; is updated on nextGeneration call
-	def __init__(self, orgNum, constraints, probLearn, prob, initial, domains, fitOffset, mutType, maxGenome):
+	def __init__(self, orgNum, constraints, learnCost, probLearn, prob, initial, domains, fitOffset, mutType, maxGenome):
 		self._orgNum = orgNum
 		self._constraints = constraints
 		self._organisms = []
@@ -757,9 +757,9 @@ class Population:                        #contains the current population and st
 		actual_genotype = initial[1:len(initial)]
 		for i in range(0, self._orgNum):
 			if i < self._orgNum/2:
-				self._organisms.append(Organism([0] + actual_genotype, self._constraints, probLearn, prob, domains, fitOffset, mutType))
+				self._organisms.append(Organism([0] + actual_genotype, self._constraints, learnCost, probLearn, prob, domains, fitOffset, mutType))
 			else: 
-				self._organisms.append(Organism([1] + actual_genotype, self._constraints, probLearn, prob, domains, fitOffset, mutType))
+				self._organisms.append(Organism([1] + actual_genotype, self._constraints, learnCost, probLearn, prob, domains, fitOffset, mutType))
 		self._stats.updateStats()
 		self._localStats.updateStats()
 		self._agentStats.updateStats()
@@ -826,6 +826,7 @@ class Simulator:
 	def __init__(self,
 				probType,		 #the type of the problem solved (sat - 1, binary constraint - 2, general constraint - 3, wcsp definition - 4)
 				initial,         #the initial values given to each variable / initial genome, expressed as a position in the domain
+				learn_cost,
 				learn_probability,
 				probability,     #the probability of a mutation for each gene
 				rounds,          #the number of rounds to be considered
@@ -847,7 +848,7 @@ class Simulator:
 			for i in range (0, len(initial)):
 				domains.append([0,1])     #for these problems (sat + binary constraint), define a binary domain
 		self._domains = domains
-		self._population = Population(orgNum, constraints, learn_probability, probability, initial, domains, fitOffset, mutType, maxGenome)
+		self._population = Population(orgNum, constraints, learn_cost, learn_probability, probability, initial, domains, fitOffset, mutType, maxGenome)
 	def run(self):
 		for i in range (0, self._rounds):
 			if self._getDistrib:
