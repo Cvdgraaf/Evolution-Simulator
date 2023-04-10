@@ -599,6 +599,90 @@ class AgentStatistics:     # Contains information about the amount of costly lea
 		for (rnd, avg) in self._costlyLearnerAmount:
 			resAmount.append(avg)
 		return resAmount
+	
+class FitnessStatistics:     # Contains information about the average fitness of both types of agents in the simulation
+	def __init__(self, population, maxPossibleFitness, orgNum):
+		self._population = population
+		self._maxPossibleFitness = maxPossibleFitness   #used to normalize fitness before plotting
+		self._orgNum = orgNum
+		self._avgFitnessCLRawList = []
+		self._avgFitnessCLList = []
+		self._avgFitnessNonCLRawList = []
+		self._avgFitnessNonCLList = []
+
+	def updateStats(self):
+		rnd = self._population.getRound()
+		avgFitnessCL = self._computeAvgFitnessCL()
+		avgFitnessNonCL = self._computeAvgFitnessNonCL()
+		self._avgFitnessCLRawList.append(avgFitnessCL)
+		self._avgFitnessCLList.append((rnd, avgFitnessCL / self._maxPossibleFitness))
+		self._avgFitnessNonCLRawList.append(avgFitnessNonCL)
+		self._avgFitnessNonCLList.append((rnd, avgFitnessNonCL / self._maxPossibleFitness))
+
+	def plotStats(self):
+		axes = plt.gca()
+		axes.set_ylim([0,1])
+		plt.title("Average fitness of agents")
+		plt.xlabel("Rounds")
+		plt.ylabel("Fitness")
+		self.plotAvgFitnessCL()
+		self.plotAvgFitnessNonCL()
+		plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
+		plt.show()
+	
+	def plotAvgFitnessCL(self):
+		self._plotStat(self._avgFitnessCLList, "CL Agents", "blue")
+		
+	def plotAvgFitnessNonCL(self):
+		self._plotStat(self._avgFitnessNonCLList, "Non-CL Agents", "red")
+
+	def _plotStat(self, statList, des, clr):
+		xs = [x[0] for x in statList]
+		ys = [x[1] for x in statList]
+		plt.plot(xs,ys, label = des, color = clr)
+	
+	def _computeAvgFitnessCL(self):
+		x = 0
+		CLNum = 0
+		orgs = self._population.getOrganisms()
+		for i in range(0, self._orgNum):
+			if orgs[i].getGenome()[0] == 1:
+				x += orgs[i].getFitness()
+				CLNum += 1
+		if CLNum != 0:
+			x /= CLNum
+		return x
+	
+	def getAvgFitnessCLRaw(self):
+		return self._avgFitnessCLRawList
+	
+	def getAvgFitnessCL(self):
+		resAmount = []
+		for (rnd, avg) in self._avgFitnessCLList:
+			resAmount.append(avg)
+		return resAmount
+	
+	def _computeAvgFitnessNonCL(self):
+		x = 0
+		orgs = self._population.getOrganisms()
+		nonCLNum = 0
+		for i in range(0, self._orgNum):
+			if orgs[i].getGenome()[0] == 0:
+				x += orgs[i].getFitness()
+				nonCLNum += 1
+		if nonCLNum != 0:
+			x /= nonCLNum
+		return x
+	
+	def getAvgFitnessNonCLRaw(self):
+		return self._avgFitnessNonCLRawList
+	
+	def getAvgFitnessNonCL(self):
+		resAmount = []
+		for (rnd, avg) in self._avgFitnessNonCLList:
+			resAmount.append(avg)
+		return resAmount
+
 
 class Statistics:                       #contains all the statistics and methods to update and plot them for a population
 	def __init__(self, population, maxPossibleFitness, orgNum) :
@@ -752,7 +836,8 @@ class Population:                        #contains the current population and st
 
 		self._stats = Statistics(self, self._maxPossibleFitness, self._orgNum)
 		self._localStats = LocalStatistics(self, self._maxPossibleFitness, 3, self._stats, maxGenome)  
-		self._agentStats = AgentStatistics(self, orgNum, orgNum)  
+		self._agentStats = AgentStatistics(self, orgNum, orgNum) 
+		self._fitnessStats = FitnessStatistics(self, self._maxPossibleFitness, orgNum)
 
 		actual_genotype = initial[1:len(initial)]
 		for i in range(0, self._orgNum):
@@ -763,6 +848,7 @@ class Population:                        #contains the current population and st
 		self._stats.updateStats()
 		self._localStats.updateStats()
 		self._agentStats.updateStats()
+		self._fitnessStats.updateStats()
 
 	def getOrganisms(self) :
 		return self._organisms.copy()
@@ -778,6 +864,9 @@ class Population:                        #contains the current population and st
 	
 	def getAgentStats(self):
 		return self._agentStats
+	
+	def getFitnessStats(self):
+		return self._fitnessStats
 	
 	def nextGeneration(self):
 		nextGenPool = []
@@ -813,6 +902,7 @@ class Population:                        #contains the current population and st
 		self._stats.updateStats()                                #update the stats for the new generation
 		self._localStats.updateStats()
 		self._agentStats.updateStats()
+		self._fitnessStats.updateStats()
 
 	def computeDistribution(self):
 		distrib = {}
@@ -862,6 +952,9 @@ class Simulator:
 
 	def printAgentStatistics(self):
 		self._population.getAgentStats().plotStats()
+	
+	def printFitnessStatistics(self):
+		self._population.getFitnessStats().plotStats()
 		
 	def getExpCoeff(self):
 		return self._population.getLocalStats().getExpCoeff()
