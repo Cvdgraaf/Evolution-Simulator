@@ -573,13 +573,13 @@ class AgentStatistics:     # Contains information about the amount of costly lea
 		axes.set_ylim([0,1])
 		plt.title("Number of costly learning agents")
 		plt.xlabel("Rounds")
-		plt.ylabel("CL agents")
+		plt.ylabel("CL Agents")
 		self.plotCLAmount()
 		plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
 		plt.show()
 	
 	def plotCLAmount(self):
-		self._plotStat(self._costlyLearnerAmount, "Average", "blue")
+		self._plotStat(self._costlyLearnerAmount, "CL Agents", "blue")
 		
 	def _plotStat(self, statList, des, clr):
 		xs = [x[0] for x in statList]
