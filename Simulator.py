@@ -156,6 +156,8 @@ class Organism:
 				new_fitness = consideredConstraints + self._fitOffset - self._learnCost
 				if fittest < new_fitness:
 					fittest = new_fitness
+				else: 
+					fittest = max(self._fitOffset, fittest - self._learnCost)
 			return fittest
 		
 	def learn_mutate(self):
@@ -571,13 +573,13 @@ class AgentStatistics:     # Contains information about the amount of costly lea
 		axes.set_ylim([0,1])
 		plt.title("Number of costly learning agents")
 		plt.xlabel("Rounds")
-		plt.ylabel("CL agents")
+		plt.ylabel("CL Agents")
 		self.plotCLAmount()
 		plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
 		plt.show()
 	
 	def plotCLAmount(self):
-		self._plotStat(self._costlyLearnerAmount, "Average", "blue")
+		self._plotStat(self._costlyLearnerAmount, "CL Agents", "blue")
 		
 	def _plotStat(self, statList, des, clr):
 		xs = [x[0] for x in statList]
@@ -712,7 +714,7 @@ class Statistics:                       #contains all the statistics and methods
 		axes.set_ylim([0,1])
 		plt.title("General fitness statistics")
 		plt.xlabel("Rounds")
-		plt.ylabel("Normalized fitness")
+		plt.ylabel("Normalised fitness")
 		self.plotAvgFit()
 		# self.plotMinFit()
 		# self.plotMaxFit()
