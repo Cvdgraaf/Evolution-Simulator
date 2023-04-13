@@ -156,7 +156,7 @@ class Organism:
 				new_fitness = consideredConstraints + self._fitOffset - self._learnCost
 				if fittest < new_fitness:
 					fittest = new_fitness
-				else: 
+				else:
 					fittest = max(self._fitOffset, fittest - self._learnCost)
 			return fittest
 		
